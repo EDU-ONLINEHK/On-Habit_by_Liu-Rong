@@ -274,10 +274,25 @@
                 }
 
                 const data = await response.json();
+                console.log("後端原始回應:", data); // Debug: 在 Console 查看完整回應
+
+                // --- 第一性原理修復：先檢查是否為上游錯誤 ---
                 
-                // 檢查數據結構是否正確
+                // 情況 1: 後端直接透傳了 NVIDIA 的錯誤物件
+                if (data.error) {
+                    const errorMsg = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
+                    throw new Error(`API 錯誤 (後端回傳): ${errorMsg}`);
+                }
+
+                // 情況 2: 某些框架回傳 detail
+                if (data.detail) {
+                     throw new Error(`API 錯誤: ${JSON.stringify(data.detail)}`);
+                }
+                
+                // 情況 3: 真的格式不符 (缺少 choices)
                 if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-                    throw new Error("API 回傳格式不符");
+                    // 將收到的錯誤結構轉為字串顯示出來，以便除錯
+                    throw new Error(`格式不符。收到的數據: ${JSON.stringify(data)}`);
                 }
 
                 console.log("AI 回覆成功:", data.choices[0].message.content);
@@ -287,16 +302,17 @@
                 console.error("API 呼叫失敗，切換至模擬模式:", error);
                 
                 // --- 模擬模式 (Fallback) ---
-                // 當後端還沒準備好，或是在本地直接開啟 HTML 時，使用此模式確保 UI 可用
-                await new Promise(resolve => setTimeout(resolve, 1000)); // 模擬思考時間
+                await new Promise(resolve => setTimeout(resolve, 1000)); 
                 
                 let fallbackResponse = "";
+                // 特殊關鍵字觸發模擬回答
                 if (userMessage.includes("自我介紹")) {
-                    fallbackResponse = "（模擬回覆）你好！我是中文科 AI 助教。雖然現在還連不上真正的 AI 大腦（可能因為您正在本地測試），但我可以協助您複習《習慣說》的重點！";
+                    fallbackResponse = "（模擬回覆）你好！我是中文科 AI 助教。雖然現在還連不上真正的 AI 大腦（可能因為 API Key 設定問題），但我可以協助您複習《習慣說》的重點！";
                 } else if (userMessage.includes("主旨")) {
                     fallbackResponse = "（模擬回覆）本文主旨是藉著作者這段少時讀書的經歷，說明習慣一旦養成便難以改變，從而帶出「學貴慎始」的道理。";
                 } else {
-                    fallbackResponse = `（系統提示：目前無法連接後端 /api/chat，錯誤原因：${error.message}。請確認您是否已使用 vercel dev 啟動專案，或已部署至 Vercel。）\n\n您剛才問的是：「${userMessage}」`;
+                    // 顯示具體錯誤原因，幫助開發者除錯
+                    fallbackResponse = `（系統提示：連接後端失敗。\n錯誤詳情：${error.message}\n\n請檢查 Vercel 後台的 Environment Variables 是否已設定 NVIDIA_API_KEY？）`;
                 }
                 
                 return fallbackResponse;
