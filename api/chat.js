@@ -2,27 +2,35 @@
 // 路徑: api/chat.js
 
 export default async function handler(req, res) {
-  // 1. 處理 CORS (允許跨域請求，這對於前後端分離很重要)
+  // 1. 處理 CORS (允許跨域請求)
   res.setHeader('Access-Control-Allow-Credentials', true);
-  res.setHeader('Access-Control-Allow-Origin', '*'); // 開發階段允許所有來源，上線建議鎖定網域
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader(
     'Access-Control-Allow-Headers',
     'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
   );
 
-  // 處理 OPTIONS 請求 (瀏覽器預檢 Request)
+  // 處理 OPTIONS 請求 (瀏覽器預檢)
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  // 只允許 POST 請求
+  // --- 新增：處理 GET 請求 (避免直接點開網址時出現看不懂的 405 錯誤) ---
+  if (req.method === 'GET') {
+    return res.status(200).json({ 
+      status: "Online", 
+      message: "API 運作中！請回到首頁 (index.html) 透過聊天框發送訊息 (POST)，不要直接開啟此連結。" 
+    });
+  }
+
+  // 檢查是否為 POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { message } = req.body; // 從前端接收訊息
+  const { message } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
@@ -30,14 +38,12 @@ export default async function handler(req, res) {
 
   // 2. 呼叫 NVIDIA API
   const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
-  
-  // 你的 API Key 應該設定在 Vercel 的 Environment Variables 中
-  // 名稱: NVIDIA_API_KEY
   const apiKey = process.env.NVIDIA_API_KEY;
 
   if (!apiKey) {
     console.error("API Key missing");
-    return res.status(500).json({ error: "Server Configuration Error" });
+    // 這裡回傳清楚的錯誤訊息，讓前端知道是 Key 沒設定
+    return res.status(500).json({ error: "API Key 未設定 (NVIDIA_API_KEY missing)" });
   }
   
   try {
@@ -48,32 +54,27 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${apiKey}` 
       },
       body: JSON.stringify({
-        // 修正點 1: 改為正確的 Minimax 模型名稱
         model: "minimaxai/minimax-m2", 
         messages: [{ role: "user", content: message }],
-        
-        // 修正點 2: 根據 Minimax 官方範例調整參數
-        temperature: 1,      // Minimax 建議值
-        top_p: 0.95,        // Minimax 建議值
-        max_tokens: 8192,   // 增加 Token 上限
-        
-        stream: false       // 保持 false (非串流模式)
+        temperature: 1,
+        top_p: 0.95,
+        max_tokens: 8192,
+        stream: false 
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("NVIDIA API Error:", errorText);
-      throw new Error(`NVIDIA API responded with ${response.status}`);
+      // 將 NVIDIA 的錯誤轉發出來以便除錯
+      throw new Error(`NVIDIA 拒絕連線: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    
-    // 3. 將 NVIDIA 的結果回傳給前端
     return res.status(200).json(data);
 
   } catch (error) {
     console.error("API Error:", error);
-    return res.status(500).json({ error: "Internal Server Error: " + error.message });
+    return res.status(500).json({ error: error.message || "Internal Server Error" });
   }
 }
