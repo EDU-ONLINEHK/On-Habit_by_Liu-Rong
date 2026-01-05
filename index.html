@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中文科DSE單元：習慣說 (互動講義)</title>
+    
+    <!-- 引入 React 和 ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- 引入 Babel 用於解析 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 錯誤處理：如果 React 崩潰，顯示錯誤訊息 -->
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            document.body.innerHTML = '<div style="padding: 20px; color: red; font-size: 20px; font-weight: bold;">系統發生錯誤 (System Error):<br>' + message + '<br><br>請重新整理頁面。</div>';
+        };
+    </script>
+
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'neu-yellow': '#FFD027',
+                        'neu-purple': '#D8B4FE',
+                        'neu-blue': '#67E8F9',
+                        'neu-lime': '#BEF264',
+                        'neu-pink': '#FDA4AF',
+                        'neu-orange': '#FDBA74',
+                    },
+                    boxShadow: {
+                        'neu': '6px 6px 0px 0px rgba(0,0,0,1)',
+                        'neu-sm': '3px 3px 0px 0px rgba(0,0,0,1)',
+                        'neu-active': '0px 0px 0px 0px rgba(0,0,0,1)',
+                    },
+                    animation: {
+                        'bounce-short': 'bounce 0.5s infinite',
+                        'pop': 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #ffffff; 
+            border-left: 2px solid black;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #000000; 
+            border: 2px solid white;
+            border-radius: 6px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444; 
+        }
+
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #000;
+            cursor: pointer;
+            border: 2px solid white;
+        }
+
+        /* 自定義動畫 */
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+    </style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+
+    const { useState, useEffect, useRef } = React;
+
+    // --- 1. 內置圖標庫 ---
+    const ICONS = {
+        menu: <path d="M4 6h16M4 12h16M4 18h16" />,
+        "chevrons-left": <path d="M11 19l-7-7 7-7M19 19l-7-7 7-7" />,
+        type: <path d="M4 7V4h16v3M9 20h6M12 4v16" />,
+        eye: <g><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></g>,
+        "eye-off": <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/>,
+        "book-open": <g><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></g>,
+        library: <path d="M16 6l4 14M12 6v14M8 8v12M20 4v2a2 2 0 0 1-2 2h-12a2 2 0 0 1-2-2v-2" />,
+        "file-text": <g><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></g>,
+        rocket: <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.48-.56.89-1.28 1.26-2.12.92.59 2.02.97 3.19.97 3.87 0 7-3.13 7-7s-3.13-7-7-7c-3.87 0-7 3.13-7 7 0 1.17.38 2.27.97 3.19C5.78 15.61 5.06 16.02 4.5 16.5z"/>,
+        "clipboard-list": <g><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 12l2 2 4-4"/><path d="M9 18l2 2 4-4"/></g>,
+        "edit-3": <g><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></g>,
+        "gamepad-2": <g><line x1="6" y1="11" x2="10" y2="11"/><line x1="8" y1="9" x2="8" y2="13"/><line x1="15" y1="12" x2="15.01" y2="12"/><line x1="18" y1="10" x2="18.01" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></g>,
+        "arrow-down": <g><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></g>,
+        "arrow-right-circle": <g><circle cx="12" cy="12" r="10"/><polyline points="12 16 16 12 12 8"/><line x1="8" y1="12" x2="16" y2="12"/></g>,
+        "alert-circle": <g><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></g>,
+        "chevron-down": <polyline points="6 9 12 15 18 9"/>,
+        "chevron-up": <polyline points="18 15 12 9 6 15"/>,
+        "check": <polyline points="20 6 9 17 4 12"/>,
+        "x": <g><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></g>,
+        "refresh-cw": <g><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></g>,
+        "trophy": <g><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 21"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 21"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></g>,
+        "puzzle": <path d="M19.439 15.424c-1.332 1.334-1.332 3.5 0 4.834 1.334 1.332 3.5 1.332 4.834 0 .543-.544 1.761-.544 2.305 0L28 21.683c.544.543.544 1.762 0 2.305-1.334 1.332-1.334 3.5 0 4.834 1.332 1.334 3.5 1.334 4.834 0 .543-.543 1.761-.543 2.305 0l1.424 1.425c.543.543.543 1.761 0 2.305-1.334 1.332-1.334 3.5 0 4.834 1.332 1.334 3.5 1.334 4.834 0 .543-.543 1.762-.543 2.305 0l1.425 1.424c.543.543 1.761.543 2.305 0 1.332-1.334 3.5-1.334 4.834 0 1.334 1.332 1.334 3.5 0 4.834-.543.543-.543 1.761 0 2.305l-1.425 1.425c-.543.543-1.761.543-2.305 0-1.332-1.334-3.5-1.334-4.834 0-1.334 1.332-1.334 3.5 0-4.834-1.332-1.334-3.5-1.334-4.834 0-.543.543-1.761.543-2.305 0l-1.425-1.424c-.543-.544-.543-1.762 0-2.305 1.334-1.332 1.334-3.5 0-4.834-1.332-1.334-3.5-1.334-4.834 0-.543.543-1.761.543-2.305 0l-1.425-1.425z" /> 
+    };
+
+    const Icon = ({ name, size = 24, className }) => {
+        return (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={className}
+            >
+                {ICONS[name] || <circle cx="12" cy="12" r="10" />}
+            </svg>
+        );
+    };
+
+    // --- UI 組件 ---
+
+    const NeuBox = ({ children, className = "", color = "bg-white", id }) => (
+        <div id={id} className={`border-4 border-black ${color} shadow-neu p-6 mb-8 rounded-xl ${className} transition-all`}>
+            {children}
+        </div>
+    );
+
+    const NeuButton = ({ onClick, children, className = "", color = "bg-neu-yellow", disabled=false }) => (
+        <button 
+            onClick={onClick}
+            disabled={disabled}
+            className={`border-4 border-black ${disabled ? 'bg-gray-300 cursor-not-allowed opacity-50' : color} font-black py-2 px-6 shadow-neu active:shadow-neu-active active:translate-x-[6px] active:translate-y-[6px] transition-all rounded-lg flex items-center justify-center gap-2 ${className}`}
+            style={{ fontSize: 'inherit' }} // 確保按鈕繼承字體大小
+        >
+            {children}
+        </button>
+    );
+
+    const NeuInput = ({ placeholder, type = "text", className = "" }) => (
+        <input 
+            type={type}
+            placeholder={placeholder}
+            style={{ fontSize: 'inherit' }} // 繼承大小
+            className={`w-full border-4 border-black bg-white p-3 font-bold focus:outline-none focus:bg-blue-50 shadow-neu-sm rounded-lg ${className}`} 
+        />
+    );
+
+    const NeuTextArea = ({ placeholder, rows = 3 }) => (
+        <textarea 
+            placeholder={placeholder}
+            rows={rows}
+            style={{ fontSize: 'inherit' }} // 繼承大小
+            className="w-full border-4 border-black bg-white p-3 font-bold focus:outline-none focus:bg-blue-50 shadow-neu-sm rounded-lg resize-y" 
+        ></textarea>
+    );
+
+    const AnswerSpan = ({ children, isVisible }) => {
+        const [isRevealed, setIsRevealed] = useState(isVisible);
+
+        useEffect(() => {
+            setIsRevealed(isVisible);
+        }, [isVisible]);
+
+        const toggleReveal = () => setIsRevealed(!isRevealed);
+
+        return (
+            <span 
+                onClick={toggleReveal}
+                className={`inline-block border-b-4 border-black px-2 mx-1 my-1 font-black transition-all duration-300 rounded cursor-pointer select-none
+                ${isRevealed ? 'text-blue-800 bg-blue-100' : 'text-transparent bg-gray-800 hover:bg-gray-700'}`} 
+                title={isRevealed ? "點擊隱藏" : "點擊顯示"}
+            >
+                {children}
+            </span>
+        );
+    };
+
+    // --- 修改標題，使用 em 單位以繼承縮放 ---
+    const SectionHeader = ({ number, title, icon }) => (
+        <div className="flex items-center gap-4 mb-6 border-b-4 border-black pb-2 mt-8">
+            <div className="bg-black text-white p-2 rounded-lg font-black text-[1em] border-2 border-white min-w-[3em] text-center shadow-[4px_4px_0px_white]">
+                {number}
+            </div>
+            <h2 className="font-black text-[1.5em] flex items-center gap-2">
+                <Icon name={icon} size={32} />
+                {title}
+            </h2>
+        </div>
+    );
+
+    const Accordion = ({ title, children, defaultOpen = false, bg = "bg-neu-purple" }) => {
+        const [isOpen, setIsOpen] = useState(defaultOpen);
+        return (
+            <div className={`border-4 border-black bg-white mb-4 rounded-xl overflow-hidden shadow-neu-sm`}>
+                <button 
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={`w-full flex justify-between items-center p-4 ${bg} font-bold border-b-4 border-black hover:opacity-90 transition-all`}
+                    style={{ fontSize: '1.2em' }} // 相對放大標題
+                >
+                    <span>{title}</span>
+                    <Icon name={isOpen ? "chevron-up" : "chevron-down"} />
+                </button>
+                {isOpen && <div className="p-4 bg-white animate-fadeIn">{children}</div>}
+            </div>
+        );
+    };
+
+    // --- 遊戲組件 ---
+    // ... (Game components logic remains similar, but ensure text classes are removed/relative)
+
+    const WordMatchGame = ({ onFinish }) => {
+        const pairs = [
+            { id: 1, text: "俛", type: 'word', matchId: 1 },
+            { id: 2, text: "低頭", type: 'mean', matchId: 1 },
+            { id: 3, text: "履", type: 'word', matchId: 2 },
+            { id: 4, text: "踩 / 踏", type: 'mean', matchId: 2 },
+            { id: 5, text: "躓", type: 'word', matchId: 3 },
+            { id: 6, text: "絆倒", type: 'mean', matchId: 3 },
+            { id: 7, text: "浸淫", type: 'word', matchId: 4 },
+            { id: 8, text: "日漸擴大", type: 'mean', matchId: 4 },
+        ];
+        const [cards, setCards] = useState([]);
+        const [selected, setSelected] = useState(null);
+        const [matched, setMatched] = useState([]);
+        useEffect(() => { setCards([...pairs].sort(() => Math.random() - 0.5)); }, []);
+        const handleCardClick = (card) => {
+            if (matched.includes(card.id)) return;
+            if (!selected) { setSelected(card); } else {
+                if (selected.id === card.id) { setSelected(null); } else if (selected.matchId === card.matchId) {
+                    setMatched([...matched, selected.id, card.id]); setSelected(null);
+                } else { const prev = selected; setSelected(card); setTimeout(() => setSelected(null), 500); }
+            }
+        };
+        const isFinished = matched.length === pairs.length;
+        return (
+            <div className="space-y-4">
+                <div className="flex justify-between items-center mb-4 text-[1.1em]">
+                    <h4 className="font-bold">配對文言字詞與語譯</h4>
+                    <span className="bg-black text-white px-3 py-1 rounded-full font-bold">進度: {matched.length / 2} / 4</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {cards.map(card => {
+                        const isSelected = selected?.id === card.id;
+                        const isMatched = matched.includes(card.id);
+                        return (
+                            <button key={card.id} onClick={() => handleCardClick(card)} disabled={isMatched}
+                                className={`h-24 border-4 border-black rounded-xl font-black text-[1.2em] shadow-neu-sm transition-all ${isMatched ? 'bg-green-300 opacity-50 scale-95' : 'bg-white hover:-translate-y-1'} ${isSelected ? 'bg-neu-yellow scale-105 ring-4 ring-offset-2 ring-black' : ''}`}>
+                                {isMatched ? <Icon name="check" className="mx-auto" /> : card.text}
+                            </button>
+                        )
+                    })}
+                </div>
+                {isFinished && <div className="text-center p-4 bg-green-100 border-4 border-black rounded-xl animate-pop"><p className="font-black text-[1.5em] mb-2">🎉 全部配對成功！</p><NeuButton onClick={() => setMatched([])} className="mx-auto bg-white">再玩一次</NeuButton></div>}
+            </div>
+        );
+    };
+
+    const SentenceBuilderGame = () => {
+        const targetSentence = "一室之不治，何以天下國家為？";
+        const parts = ["一室", "之", "不治", "，", "何以", "天下", "國家", "為", "？"];
+        const [pool, setPool] = useState([]);
+        const [answer, setAnswer] = useState([]);
+        const [result, setResult] = useState(null);
+        useEffect(() => { setPool([...parts].sort(() => Math.random() - 0.5).map((t, i) => ({ id: i, text: t }))); }, []);
+        const addToAnswer = (item) => { setAnswer([...answer, item]); setPool(pool.filter(p => p.id !== item.id)); setResult(null); };
+        const returnToPool = (item) => { setPool([...pool, item]); setAnswer(answer.filter(a => a.id !== item.id)); setResult(null); };
+        const checkAnswer = () => { const currentStr = answer.map(a => a.text).join(""); if (currentStr === targetSentence.replace(/ /g, "")) { setResult('correct'); } else { setResult('wrong'); } };
+        const reset = () => { setAnswer([]); setPool([...parts].sort(() => Math.random() - 0.5).map((t, i) => ({ id: i, text: t }))); setResult(null); };
+        return (
+            <div className="space-y-6">
+                 <h4 className="font-bold text-[1.2em] mb-2">重組句子：父親的教誨</h4>
+                 <div className={`min-h-[80px] border-4 border-black border-dashed rounded-xl p-4 flex flex-wrap gap-2 items-center bg-gray-50 ${result === 'correct' ? 'bg-green-100 border-green-600 border-solid' : ''} ${result === 'wrong' ? 'bg-red-50' : ''}`}>
+                    {answer.length === 0 && <span className="text-gray-400 font-bold select-none">點擊下方詞語組成句子...</span>}
+                    {answer.map(item => <button key={item.id} onClick={() => returnToPool(item)} className="bg-white border-2 border-black px-3 py-1 rounded font-bold shadow-neu-sm hover:bg-red-100 text-[1.1em]">{item.text}</button>)}
+                 </div>
+                 <div className="flex flex-wrap gap-3">
+                    {pool.map(item => <button key={item.id} onClick={() => addToAnswer(item)} className="bg-neu-blue border-2 border-black px-4 py-2 rounded-lg font-bold shadow-neu-sm hover:-translate-y-1 transition-transform text-[1.1em]">{item.text}</button>)}
+                 </div>
+                 <div className="flex gap-4"><NeuButton onClick={checkAnswer} className="flex-1">檢查答案</NeuButton><NeuButton onClick={reset} color="bg-white" className="w-16"><Icon name="refresh-cw"/></NeuButton></div>
+                 {result === 'correct' && <div className="p-4 bg-green-200 border-4 border-black rounded-lg font-black text-center animate-pop text-[1.2em]">✅ 完全正確！做得好！</div>}
+                 {result === 'wrong' && <div className="p-4 bg-red-200 border-4 border-black rounded-lg font-black text-center animate-shake text-[1.2em]">❌ 順序不對，請再試試！</div>}
+            </div>
+        );
+    };
+
+    const TrueFalseGame = () => {
+        const questions = [
+            { q: "劉蓉是清代人。", a: true },
+            { q: "窪地是因為地陷造成的。", a: false, reason: "是因為作者天天在同一個地方繞圈踩出來的。" },
+            { q: "父親看見窪地後，稱讚作者勤奮讀書。", a: false, reason: "父親嘲笑他連一間房都管不好。" },
+            { q: "「一室之不治，何以天下國家為？」是反問句。", a: true },
+            { q: "窪地填平後，作者立刻就覺得很舒服。", a: false, reason: "作者反而覺得地面像凸起來一樣，感到不適。" },
+        ];
+        const [current, setCurrent] = useState(0);
+        const [score, setScore] = useState(0);
+        const [showResult, setShowResult] = useState(false);
+        const [isFinished, setIsFinished] = useState(false);
+        const handleAnswer = (bool) => { const correct = questions[current].a === bool; if (correct) setScore(score + 1); setShowResult({ correct, reason: questions[current].reason }); setTimeout(() => { if (current < questions.length - 1) { setCurrent(current + 1); setShowResult(false); } else { setIsFinished(true); } }, correct ? 1000 : 3000); };
+        const reset = () => { setCurrent(0); setScore(0); setIsFinished(false); setShowResult(false); };
+        if (isFinished) return <div className="text-center py-8"><Icon name="trophy" size={64} className="mx-auto mb-4 text-yellow-500" /><h3 className="font-black text-[2em] mb-4">挑戰完成！</h3><p className="text-[1.5em] font-bold mb-6">你的得分：{score} / {questions.length}</p><NeuButton onClick={reset} className="mx-auto">再來一次</NeuButton></div>;
+        return (
+            <div className="text-center space-y-8">
+                <div className="flex justify-between font-bold text-gray-500 text-[0.9em]"><span>問題 {current + 1}/{questions.length}</span><span>得分: {score}</span></div>
+                <div className="min-h-[150px] flex items-center justify-center p-4 bg-white border-4 border-black rounded-xl shadow-neu-sm"><p className="font-black text-[1.5em]">{questions[current].q}</p></div>
+                {showResult ? <div className={`p-4 rounded-xl border-4 border-black font-bold animate-pop text-[1.2em] ${showResult.correct ? 'bg-green-300' : 'bg-red-300'}`}>{showResult.correct ? "✅ 答對了！" : "❌ 答錯了！"}{!showResult.correct && showResult.reason && <p className="mt-2 text-[0.8em]">{showResult.reason}</p>}</div> : <div className="flex gap-4 justify-center"><button onClick={() => handleAnswer(true)} className="w-24 h-24 rounded-full border-4 border-black bg-white hover:bg-green-200 font-black text-[2em] shadow-neu active:translate-y-1 transition-all">⭕</button><button onClick={() => handleAnswer(false)} className="w-24 h-24 rounded-full border-4 border-black bg-white hover:bg-red-200 font-black text-[2em] shadow-neu active:translate-y-1 transition-all">❌</button></div>}
+            </div>
+        );
+    };
+
+    const GameHub = () => {
+        const [activeTab, setActiveTab] = useState('quiz');
+        const tabs = [{ id: 'quiz', label: '綜合測驗', icon: 'file-text', color: 'bg-neu-blue' }, { id: 'match', label: '詞義配對', icon: 'clipboard-list', color: 'bg-neu-lime' }, { id: 'sentence', label: '金句重組', icon: 'edit-3', color: 'bg-neu-pink' }, { id: 'tf', label: '是非挑戰', icon: 'alert-circle', color: 'bg-neu-orange' }];
+        return (
+            <NeuBox color="bg-white" className="relative mt-12 !p-0 overflow-hidden">
+                <div className="bg-black text-white p-4 flex items-center gap-2"><Icon name="gamepad-2" className="text-neu-yellow" /><h3 className="font-black text-[1.2em]">互動練習場</h3></div>
+                <div className="flex overflow-x-auto border-b-4 border-black bg-gray-100 p-2 gap-2">
+                    {tabs.map(tab => <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold border-2 border-black whitespace-nowrap transition-all ${activeTab === tab.id ? `${tab.color} shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] -translate-y-1` : 'bg-white opacity-70 hover:opacity-100'}`}><Icon name={tab.icon} size={18} />{tab.label}</button>)}
+                </div>
+                <div className="p-6 bg-white min-h-[400px]">{activeTab === 'quiz' && <QuizSection />}{activeTab === 'match' && <WordMatchGame />}{activeTab === 'sentence' && <SentenceBuilderGame />}{activeTab === 'tf' && <TrueFalseGame />}</div>
+            </NeuBox>
+        );
+    };
+
+    const quizData = [
+        { id: 1, question: "《習慣說》一文中，作者父親說：「一室之不治，何以天下國家為？」這句話運用了甚麼修辭手法？", options: ["比喻", "反問", "排比", "擬人"], correct: 1, explanation: "父親用反問的語氣強調：如果連一個房間都管理不好，又怎能治理國家大事呢？" },
+        { id: 2, question: "文中「足履平地，不與窪適也」說明了甚麼？", options: ["窪地很難行走", "平地比窪地好", "習慣會改變人的適應性", "作者喜歡走平地"], correct: 2, explanation: "這句話指出，當腳習慣了平地，踩到窪地就會不適應；反之亦然。說明習慣一旦養成，就會影響人的自然反應。" },
+        { id: 3, question: "本文的主旨是甚麼？", options: ["說明書房裝修的重要性", "記述作者年少時的趣事", "藉填平窪地一事，說明「學貴慎始」的道理", "讚揚父親的教導"], correct: 2, explanation: "作者藉著自己適應書房窪地，後來填平反而不適應這件事，論證了習慣對人的影響深遠，從而帶出學習必須謹慎開始的道理。" }
+    ];
+
+    const QuizSection = () => {
+        const [answers, setAnswers] = useState({});
+        const handleSelect = (qIdx, optIdx) => { if (answers[qIdx]) return; setAnswers(prev => ({ ...prev, [qIdx]: { selected: optIdx, showResult: true } })); };
+        const resetQuiz = () => setAnswers({});
+        return (
+            <div className="space-y-8 animate-fadeIn">
+                <div className="text-center mb-6"><h4 className="font-bold text-[1.5em]">綜合能力測試</h4><p className="text-gray-500">共 3 題，請選出正確答案</p></div>
+                {quizData.map((q, qIdx) => {
+                    const answerState = answers[qIdx]; const isAnswered = !!answerState; const isCorrect = isAnswered && answerState.selected === q.correct;
+                    return (
+                        <div key={q.id} className="bg-gray-50 border-2 border-black p-4 rounded-xl">
+                            <h4 className="font-bold text-[1.1em] mb-4 flex items-start gap-2"><span className="bg-black text-white px-2 rounded shrink-0">Q{qIdx + 1}</span>{q.question}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{q.options.map((opt, oIdx) => <button key={oIdx} onClick={() => handleSelect(qIdx, oIdx)} disabled={isAnswered} className={`text-left p-3 border-2 border-black rounded-lg font-bold transition-all ${!isAnswered ? 'hover:bg-yellow-100 bg-white' : ''} ${isAnswered && oIdx === q.correct ? 'bg-green-400' : ''} ${isAnswered && oIdx === answerState.selected && oIdx !== q.correct ? 'bg-red-400' : ''} ${isAnswered && oIdx !== q.correct && oIdx !== answerState.selected ? 'opacity-50 bg-gray-200' : 'bg-white'}`}>{opt}</button>)}</div>
+                            {isAnswered && <div className={`mt-4 p-4 border-2 border-black rounded-lg ${isCorrect ? 'bg-green-100' : 'bg-red-100'} animate-pop`}><p className="font-black text-[1.1em] mb-1">{isCorrect ? "✅ 答對了！" : "❌ 答錯了！"}</p><p className="font-medium">{q.explanation}</p></div>}
+                        </div>
+                    );
+                })}
+                <div className="flex justify-center pt-6"><NeuButton onClick={resetQuiz} color="bg-white">重置測驗</NeuButton></div>
+            </div>
+        );
+    };
+
+    // --- 主應用程式 ---
+    const App = () => {
+        const [fontSize, setFontSize] = useState(22);
+        const [isNavOpen, setIsNavOpen] = useState(true);
+        const [showKeyPoints, setShowKeyPoints] = useState(true);
+        const scrollTo = (id) => { const element = document.getElementById(id); if (element) { element.scrollIntoView({ behavior: 'smooth' }); if (window.innerWidth < 768) setIsNavOpen(false); } };
+
+        return (
+            <div className="min-h-screen flex selection:bg-neu-yellow selection:text-black">
+                <aside className={`${isNavOpen ? 'w-80 translate-x-0' : 'w-0 -translate-x-full md:w-20 md:translate-x-0'} fixed h-full bg-white border-r-4 border-black z-50 transition-all duration-300 ease-in-out flex flex-col`}>
+                    <div className="p-4 border-b-4 border-black bg-neu-yellow flex items-center justify-between min-h-[80px]">
+                        <div className={`${!isNavOpen && 'hidden md:hidden'} font-black text-xl truncate`}>習慣說 · 導航</div>
+                        <button onClick={() => setIsNavOpen(!isNavOpen)} className="p-2 border-2 border-black rounded bg-white hover:bg-gray-100 shadow-neu-sm transition-transform active:translate-y-1 active:shadow-none"><Icon name={isNavOpen ? "chevrons-left" : "menu"} /></button>
+                    </div>
+                    <div className={`flex-1 overflow-y-auto p-4 space-y-6 ${!isNavOpen && 'hidden'}`}>
+                        <div className="border-4 border-black p-4 rounded-xl bg-neu-blue shadow-neu-sm"><label className="flex items-center gap-2 font-bold mb-2"><Icon name="type" size={18}/> 字體: {fontSize}px</label><input type="range" min="18" max="48" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-full h-4 bg-white border-2 border-black rounded-lg appearance-none slider-thumb"/></div>
+                        <div className="border-4 border-black p-4 rounded-xl bg-neu-pink shadow-neu-sm"><div className="flex items-center justify-between font-bold mb-2"><span>顯示重點</span><button onClick={() => setShowKeyPoints(!showKeyPoints)} className="p-1 border-2 border-black rounded bg-white hover:bg-gray-100"><Icon name={showKeyPoints ? "eye" : "eye-off"} className={showKeyPoints ? "text-blue-600" : "text-gray-400"}/></button></div><p className="text-xs font-bold leading-tight opacity-75">關閉以進行背誦測試</p></div>
+                        <nav className="space-y-3 pb-20">{[{id: 'header', label: '學生資料', color: 'bg-white'}, {id: 'pre-class', label: '一、課前預習', color: 'bg-neu-orange'}, {id: 'encyclopedia', label: '資料小百科', color: 'bg-neu-lime'}, {id: 'text-p1', label: '二、課文：第一段', color: 'bg-white'}, {id: 'text-p2', label: '二、課文：第二段', color: 'bg-white'}, {id: 'think', label: '衝上雲霄 (思考)', color: 'bg-neu-purple'}, {id: 'text-p3', label: '二、課文：第三段', color: 'bg-white'}, {id: 'text-p4', label: '二、課文：第四段', color: 'bg-white'}, {id: 'summary', label: '三、總結', color: 'bg-neu-lime'}, {id: 'post-class', label: '四、課後習作', color: 'bg-neu-orange'}, {id: 'quiz', label: '互動練習場', color: 'bg-neu-blue'}].map((item) => <button key={item.id} onClick={() => scrollTo(item.id)} className={`w-full text-left font-bold px-4 py-3 ${item.color} border-4 border-black rounded-lg hover:translate-x-1 transition-all shadow-neu-sm hover:shadow-neu`}>{item.label}</button>)}</nav>
+                    </div>
+                </aside>
+
+                <main className={`flex-1 p-6 md:p-12 transition-all duration-300 ${isNavOpen ? 'ml-0 md:ml-80' : 'ml-0 md:ml-20'}`} style={{ fontSize: `${fontSize}px` }}>
+                    <div className="max-w-5xl mx-auto space-y-12 pb-20">
+                        <section id="header" className="relative">
+                            <div className="bg-white border-8 border-black p-8 shadow-neu rounded-3xl relative overflow-hidden">
+                                <div className="absolute top-0 right-0 bg-neu-yellow text-black font-black px-6 py-2 border-l-4 border-b-4 border-black text-[1.5em]">中二中文</div>
+                                <h1 className="font-black text-[2.5em] mb-2 mt-4 tracking-tight">習慣說</h1>
+                                <h2 className="font-bold text-[1.5em] mb-8 flex items-center gap-2"><span className="bg-black text-white px-2 py-1 text-[0.8em] rounded">作者</span> 劉蓉</h2>
+                                <div className="flex flex-wrap gap-6 text-[1em] p-4 bg-gray-100 border-4 border-black rounded-xl border-dashed">
+                                    <div className="flex items-center gap-2 flex-1 min-w-[200px]"><span className="font-bold whitespace-nowrap">姓名：</span><input className="border-b-4 border-black bg-transparent w-full px-2 focus:outline-none focus:border-blue-500 font-handwriting" /></div>
+                                    <div className="flex items-center gap-2 flex-1 min-w-[200px]"><span className="font-bold whitespace-nowrap">日期：</span><input type="date" className="border-b-4 border-black bg-transparent w-full px-2 font-sans" /></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="pre-class">
+                            <SectionHeader number="一" title="課前預習" icon="book-open" />
+                            <NeuBox color="bg-neu-orange">
+                                <div className="space-y-8">
+                                    <div><label className="block font-bold mb-3 flex items-center gap-2"><span className="bg-black text-white w-8 h-8 flex items-center justify-center rounded-full text-sm">1</span>試寫出你的一個壞習慣。</label><NeuInput placeholder="在此輸入回答..." /></div>
+                                    <div><label className="block font-bold mb-3 flex items-center gap-2"><span className="bg-black text-white w-8 h-8 flex items-center justify-center rounded-full text-sm">2</span>這個壞習慣給你甚麼負面的影響？</label><NeuTextArea placeholder="對生活的影響..." /></div>
+                                    <div><label className="block font-bold mb-3 flex items-center gap-2"><span className="bg-black text-white w-8 h-8 flex items-center justify-center rounded-full text-sm">3</span>你可以怎樣戒掉這個壞習慣？</label><NeuTextArea placeholder="你的解決方案..." /></div>
+                                    <div><label className="block font-bold mb-3 flex items-center gap-2"><span className="bg-black text-white w-8 h-8 flex items-center justify-center rounded-full text-sm">4</span>試想想這個壞習慣對你有甚麼啟發。</label><NeuTextArea placeholder="你的反思..." /></div>
+                                </div>
+                            </NeuBox>
+                        </section>
+
+                        <section id="encyclopedia">
+                            <NeuBox color="bg-neu-lime" className="transform rotate-1 hover:rotate-0 transition-transform duration-300">
+                                <div className="flex items-center gap-4 mb-4 border-b-4 border-black pb-4"><Icon name="library" size={48} className="text-black" /><h3 className="font-black text-[1.5em]">資料小百科</h3></div>
+                                <div className="bg-white border-4 border-black p-6 rounded-lg space-y-4">
+                                    <div className="flex gap-4 items-start"><span className="bg-black text-white px-3 py-1 font-bold rounded-lg shrink-0">體裁</span><p>「說」特點是內容短小，以記述心得或議論某一事物為主，多運用<strong>夾敍夾議</strong>或<strong>先敍後議</strong>來說明道理。</p></div>
+                                    <div className="flex gap-4 items-start"><span className="bg-black text-white px-3 py-1 font-bold rounded-lg shrink-0">現代</span><p>「說」的體裁較接近今天的說明文，其內容、寫法、風格都較自由多樣，內容包括生活雜感、讀書心得等。</p></div>
+                                </div>
+                            </NeuBox>
+                        </section>
+
+                        <section id="text-p1">
+                            <SectionHeader number="二" title="課文內容：第一段" icon="file-text" />
+                            <div className="mb-4 inline-block bg-neu-yellow border-2 border-black px-4 py-2 font-bold rounded-lg shadow-neu-sm transform -rotate-1">段意：寫作者對書房內的窪地由不習慣到習慣的事。</div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="bg-white border-4 border-black p-5 rounded-xl shadow-neu-sm"><h4 className="font-black text-center mb-4 border-b-4 border-black pb-2 bg-gray-100 rounded">原文</h4><p className="leading-loose text-justify">蓉少時，讀書養晦堂之西偏一室；俛而讀，仰而思，思而弗得，輒起，繞室以旋。室有窪徑尺，浸淫日廣，每履之，足苦躓焉。既久而遂安之。</p></div>
+                                <div className="bg-blue-50 border-4 border-black p-5 rounded-xl shadow-neu-sm"><h4 className="font-black text-center mb-4 border-b-4 border-black pb-2 bg-blue-200 rounded">語譯 (填充)</h4><p className="leading-loose text-justify">劉蓉年少的時候，在養晦堂 <AnswerSpan isVisible={showKeyPoints}>西面的一個房門</AnswerSpan> 讀書；他常常 <AnswerSpan isVisible={showKeyPoints}>低頭</AnswerSpan> 來讀書，<AnswerSpan isVisible={showKeyPoints}>抬頭</AnswerSpan> 來思考；若想問題得不到答案，總是站起來，繞著房子 <AnswerSpan isVisible={showKeyPoints}>兜圈子</AnswerSpan>。<br/><br/>房間裡有直徑約一尺的 <AnswerSpan isVisible={showKeyPoints}>凹陷的地方</AnswerSpan>，範圍日漸擴大。每次踩到那裡，都會因被 <AnswerSpan isVisible={showKeyPoints}>絆倒</AnswerSpan> 而苦惱。但是，過了一段長時間就 <AnswerSpan isVisible={showKeyPoints}>習慣</AnswerSpan> 了。</p></div>
+                            </div>
+                            <div className="mt-6">
+                                <Accordion title="❓ 問題思考：作者的讀書習慣？">
+                                    <div className="space-y-4"><p className="font-bold text-[1.1em]">1. 作者的讀書習慣是怎樣的？他為甚麼常常絆倒？</p><div className="bg-gray-100 p-4 rounded-lg border-l-8 border-neu-yellow"><p>答︰作者讀書時苦思而無所得，便會 <AnswerSpan isVisible={showKeyPoints}>在書房内繞圈子</AnswerSpan>。</p><p className="mt-2">書房內有一處 <AnswerSpan isVisible={showKeyPoints}>窪地</AnswerSpan>，使他常常絆倒。漸漸地，凹陷的窪地 <AnswerSpan isVisible={showKeyPoints}>日漸擴大</AnswerSpan>。</p></div><p className="font-bold text-[1.1em] mt-4">2. 為甚麼作者後來沒有被絆倒？</p><div className="bg-gray-100 p-4 rounded-lg border-l-8 border-neu-yellow"><p>答︰凹陷的窪地雖然愈來愈大，但他慢慢 <AnswerSpan isVisible={showKeyPoints}>習慣</AnswerSpan>，就沒有被絆倒了。</p></div></div>
+                                </Accordion>
+                            </div>
+                        </section>
+
+                        <section id="text-p2">
+                            <SectionHeader number="二" title="課文內容：第二段" icon="file-text" />
+                            <div className="mb-4 inline-block bg-neu-yellow border-2 border-black px-4 py-2 font-bold rounded-lg shadow-neu-sm transform -rotate-1">段意：寫作者的父親命人填平了窪地。</div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="bg-white border-4 border-black p-5 rounded-xl shadow-neu-sm"><h4 className="font-black text-center mb-4 border-b-4 border-black pb-2 bg-gray-100 rounded">原文</h4><p className="leading-loose text-justify">一日，父來室中，顧而笑曰：「一室之不治，何以天下國家為？ 」命童子取土平之。</p></div>
+                                <div className="bg-blue-50 border-4 border-black p-5 rounded-xl shadow-neu-sm"><h4 className="font-black text-center mb-4 border-b-4 border-black pb-2 bg-blue-200 rounded">語譯 (填充)</h4><p className="leading-loose text-justify">一天， 父親來到房間裡，看了一番後便笑著說：「一個房也 <AnswerSpan isVisible={showKeyPoints}>整理不好</AnswerSpan>，怎麼能夠 <AnswerSpan isVisible={showKeyPoints}>治理天下國家</AnswerSpan> 呢？ 」就吩咐小僕人拿些土來，把那窪地 <AnswerSpan isVisible={showKeyPoints}>填平</AnswerSpan> 了。</p></div>
+                            </div>
+                        </section>
+
+                        <section id="think">
+                            <NeuBox color="bg-neu-purple" className="text-black">
+                                <div className="flex items-center gap-3 mb-4"><div className="bg-neu-yellow text-black p-3 rounded-full border-4 border-black shadow-neu-sm"><Icon name="rocket" size={32} /></div><h2 className="font-black text-[2em] text-white drop-shadow-[4px_4px_0px_#000]">衝上雲霄：深度思考</h2></div>
+                                <p className="mb-6 text-[1.2em] font-bold text-white drop-shadow-[2px_2px_0px_#000]">閱讀文章時，可以邊閱讀邊向自己提出與文章內容相關的問題。</p>
+                                <div className="bg-white p-6 rounded-xl border-4 border-black shadow-neu">
+                                    <p className="font-black text-[1.2em] mb-4">題目：假如劉蓉的父親沒有填平窪地，文章會怎麼發展下去？</p>
+                                    <Accordion title="💡 點擊查看參考思路" bg="bg-gray-100">
+                                        <div className="p-2"><p className="mb-2"><strong>(開放式答案)</strong></p><ul className="list-disc list-inside space-y-2"><li>作者可能會一直習慣那塊窪地，甚至可能因為習慣了這種「不便」，變得不思進取。</li><li>如果一直不填平，可能會發生意外受傷，屆時可能會有另一番悔悟。</li><li>這個問題引導我們思考：環境對人有持續的影響，如果我們對壞環境習以為常，就會失去改變的動力。</li></ul></div>
+                                    </Accordion>
+                                    <div className="mt-4"><NeuTextArea placeholder="寫下你的看法..." rows={2} /></div>
+                                </div>
+                            </NeuBox>
+                        </section>
+
+                        <section id="text-p3">
+                            <SectionHeader number="二" title="課文內容：第三段" icon="file-text" />
+                            <div className="mb-4 inline-block bg-neu-yellow border-2 border-black px-4 py-2 font-bold rounded-lg shadow-neu-sm transform -rotate-1">段意：窪地給填平了，作者反而不習慣。</div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="bg-white border-4 border-black p-5 rounded-xl shadow-neu-sm"><h4 className="font-black text-center mb-4 border-b-4 border-black pb-2 bg-gray-100 rounded">原文</h4><p className="leading-loose text-justify">後蓉履其地，蹴然以驚，如土忽隆起者；俯視地，坦然則既平矣！已而復然，又久而後安之。</p></div>
+                                <div className="bg-blue-50 border-4 border-black p-5 rounded-xl shadow-neu-sm"><h4 className="font-black text-center mb-4 border-b-4 border-black pb-2 bg-blue-200 rounded">語譯 (填充)</h4><p className="leading-loose text-justify">後來，劉蓉踏到那片地方，好像 <AnswerSpan isVisible={showKeyPoints}>踢到東西</AnswerSpan> 般，吃了一驚，覺得地面像 <AnswerSpan isVisible={showKeyPoints}>凸</AnswerSpan> 了起來似的。<AnswerSpan isVisible={showKeyPoints}>低頭</AnswerSpan> 看看，地面已經 <AnswerSpan isVisible={showKeyPoints}>填平</AnswerSpan> 了。經過一段時間還是這樣，過了很久又 <AnswerSpan isVisible={showKeyPoints}>習慣</AnswerSpan> 下來。</p></div>
+                            </div>
+                            <div className="mt-6">
+                                <Accordion title="❓ 問題思考：填平後的反應？">
+                                    <div className="space-y-4"><p className="font-bold text-[1.1em]">3. 窪地填平後，作者覺得怎樣？</p><div className="bg-gray-100 p-4 rounded-lg border-l-8 border-neu-yellow"><p>答︰窪地填平後，作者踩在上面反而覺得 <AnswerSpan isVisible={showKeyPoints}>凸起了</AnswerSpan>，很不習慣，但日子久了，便 <AnswerSpan isVisible={showKeyPoints}>習慣</AnswerSpan> 了。</p></div></div>
+                                </Accordion>
+                            </div>
+                        </section>
+
+                        <section id="text-p4">
+                            <SectionHeader number="二" title="課文內容：第四段" icon="file-text" />
+                            <div className="mb-4 inline-block bg-neu-yellow border-2 border-black px-4 py-2 font-bold rounded-lg shadow-neu-sm transform -rotate-1">段意：說明習慣對人影響深遠，所以學習時必須在開始時候養成良好的習慣。</div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="bg-white border-4 border-black p-5 rounded-xl shadow-neu-sm"><h4 className="font-black text-center mb-4 border-b-4 border-black pb-2 bg-gray-100 rounded">原文</h4><p className="leading-loose text-justify">噫！習之中人甚矣哉！足履平地，不與窪適也；及其久而窪者若平，至使久而即乎其故，則反窒焉而不寧，故君子之學貴慎始。</p></div>
+                                <div className="bg-blue-50 border-4 border-black p-5 rounded-xl shadow-neu-sm"><h4 className="font-black text-center mb-4 border-b-4 border-black pb-2 bg-blue-200 rounded">語譯 (填充)</h4><p className="leading-loose text-justify">唉，習慣對人的影響真大啊！ 腳 <AnswerSpan isVisible={showKeyPoints}>一向</AnswerSpan> 踏在平地上，踏在窪地上 <AnswerSpan isVisible={showKeyPoints}>便感到不適</AnswerSpan>，但是久而久之，那低陷的地方好像 <AnswerSpan isVisible={showKeyPoints}>平地</AnswerSpan> 一樣。日子久了，再接觸到 <AnswerSpan isVisible={showKeyPoints}>原來</AnswerSpan> 的樣子，反而覺得有 <AnswerSpan isVisible={showKeyPoints}>障礙</AnswerSpan> 而不習慣。因此，君子求學，最重要是開始時要 <AnswerSpan isVisible={showKeyPoints}>謹慎小心</AnswerSpan>。</p></div>
+                            </div>
+                            <NeuBox color="bg-red-100" className="mt-6 border-red-500"><h3 className="font-black text-[1.5em] mb-2 flex items-center gap-2 text-red-600"><Icon name="alert-circle" /> 核心道理</h3><p className="text-[1.2em]">這故事說明的道理是「<AnswerSpan isVisible={showKeyPoints}>學貴慎始</AnswerSpan>」。</p></NeuBox>
+                        </section>
+
+                        <section id="summary">
+                            <SectionHeader number="三" title="總結" icon="clipboard-list" />
+                            <div className="flex flex-col md:flex-row gap-6 items-stretch">
+                                <div className="flex-1"><NeuBox color="bg-neu-lime" className="h-full flex flex-col items-center justify-center text-center"><h3 className="font-black text-[1.5em] mb-4 bg-white px-4 py-1 border-4 border-black rounded-full">體裁</h3><p className="text-[2em] font-black">論說文</p></NeuBox></div>
+                                <div className="flex-[2]"><NeuBox color="bg-neu-lime" className="h-full"><h3 className="font-black text-[1.5em] mb-4 bg-white inline-block px-4 py-1 border-4 border-black rounded-full">主旨</h3><p className="leading-loose text-[1.2em]">本文寫作者少時讀書，天天踏著書房中的 <AnswerSpan isVisible={showKeyPoints}>窪地</AnswerSpan>，習慣成了自然，後來窪地 <AnswerSpan isVisible={showKeyPoints}>填平</AnswerSpan> 了，反而覺得 <AnswerSpan isVisible={showKeyPoints}>不習慣</AnswerSpan> 的事。由此說明了 <AnswerSpan isVisible={showKeyPoints}>習慣</AnswerSpan> 形成了便很難 <AnswerSpan isVisible={showKeyPoints}>改變</AnswerSpan>，所以學習必須重視開始時養成 <AnswerSpan isVisible={showKeyPoints}>良好習慣</AnswerSpan>。</p></NeuBox></div>
+                            </div>
+                        </section>
+
+                        <section id="post-class">
+                            <SectionHeader number="四" title="課後習作：借事說理" icon="edit-3" />
+                            <div className="relative py-4">
+                                <div className="hidden md:block absolute top-1/2 left-0 w-full h-2 bg-black -z-10 transform -translate-y-1/2"></div>
+                                <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch">
+                                    <div className="flex-1"><NeuBox color="bg-white" className="h-full flex flex-col items-center text-center !mb-0"><div className="bg-black text-white px-4 py-1 font-bold mb-4 rounded-full">事</div><p>作者讀書時若苦思而無所得，便會在書房內 <AnswerSpan isVisible={showKeyPoints}>繞圈子</AnswerSpan>。</p></NeuBox><div className="md:hidden flex justify-center py-2"><Icon name="arrow-down" /></div></div>
+                                    <div className="hidden md:flex items-center"><Icon name="arrow-right-circle" size={32} /></div>
+                                    <div className="flex-1"><NeuBox color="bg-white" className="h-full flex flex-col items-center text-center !mb-0"><div className="bg-black text-white px-4 py-1 font-bold mb-4 rounded-full">過程</div><p>書房內的窪地使他常常 <AnswerSpan isVisible={showKeyPoints}>絆倒</AnswerSpan>。</p></NeuBox><div className="md:hidden flex justify-center py-2"><Icon name="arrow-down" /></div></div>
+                                    <div className="hidden md:flex items-center"><Icon name="arrow-right-circle" size={32} /></div>
+                                    <div className="flex-1"><NeuBox color="bg-white" className="h-full flex flex-col items-center text-center !mb-0"><div className="bg-black text-white px-4 py-1 font-bold mb-4 rounded-full">變化</div><p>父親命人把漥地 <AnswerSpan isVisible={showKeyPoints}>填平</AnswerSpan>。</p><p className="text-sm text-gray-500 mt-2">填平後反覺得地面 <AnswerSpan isVisible={showKeyPoints}>隆起</AnswerSpan>，很不 <AnswerSpan isVisible={showKeyPoints}>習慣</AnswerSpan>。</p></NeuBox><div className="md:hidden flex justify-center py-2"><Icon name="arrow-down" /></div></div>
+                                    <div className="hidden md:flex items-center"><Icon name="arrow-right-circle" size={32} /></div>
+                                    <div className="flex-1"><NeuBox color="bg-neu-yellow" className="h-full flex flex-col items-center text-center border-dashed !mb-0"><div className="bg-black text-white px-4 py-1 font-bold mb-4 rounded-full">理</div><p>日子一久便又 <AnswerSpan isVisible={showKeyPoints}>習慣</AnswerSpan> 了。</p><div className="mt-4 pt-4 border-t-2 border-black w-full font-black text-red-600">說明「學貴慎始」</div></NeuBox></div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section id="quiz">
+                            <GameHub />
+                        </section>
+
+                    </div>
+                    <footer className="text-center py-8 text-gray-500 font-bold border-t-4 border-black mt-12 bg-gray-200"><p>DSE 中文科電子互動教材 | 新野獸派風格設計</p></footer>
+                </main>
+            </div>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+
+</script>
+
+</body>
+</html>
