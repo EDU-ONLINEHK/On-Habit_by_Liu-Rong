@@ -255,6 +255,8 @@
 
         const askAI = async (userMessage) => {
             try {
+                console.log("正在嘗試連接後端: /api/chat");
+                
                 // 呼叫我們自己的後端 (Vercel 會自動處理路徑)
                 const response = await fetch('/api/chat', {
                     method: 'POST',
@@ -264,17 +266,40 @@
                     body: JSON.stringify({ message: userMessage })
                 });
 
+                // 詳細錯誤檢查
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    const errorText = await response.text();
+                    console.error(`後端回應錯誤 (Status: ${response.status}):`, errorText);
+                    throw new Error(`伺服器錯誤: ${response.status} ${response.statusText}`);
                 }
 
                 const data = await response.json();
-                console.log("AI 回覆:", data.choices[0].message.content);
+                
+                // 檢查數據結構是否正確
+                if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                    throw new Error("API 回傳格式不符");
+                }
+
+                console.log("AI 回覆成功:", data.choices[0].message.content);
                 return data.choices[0].message.content;
 
             } catch (error) {
-                console.error("發生錯誤:", error);
-                return "抱歉，目前無法連接到 AI 腦袋 (請確認 /api/chat 後端已啟動)。";
+                console.error("API 呼叫失敗，切換至模擬模式:", error);
+                
+                // --- 模擬模式 (Fallback) ---
+                // 當後端還沒準備好，或是在本地直接開啟 HTML 時，使用此模式確保 UI 可用
+                await new Promise(resolve => setTimeout(resolve, 1000)); // 模擬思考時間
+                
+                let fallbackResponse = "";
+                if (userMessage.includes("自我介紹")) {
+                    fallbackResponse = "（模擬回覆）你好！我是中文科 AI 助教。雖然現在還連不上真正的 AI 大腦（可能因為您正在本地測試），但我可以協助您複習《習慣說》的重點！";
+                } else if (userMessage.includes("主旨")) {
+                    fallbackResponse = "（模擬回覆）本文主旨是藉著作者這段少時讀書的經歷，說明習慣一旦養成便難以改變，從而帶出「學貴慎始」的道理。";
+                } else {
+                    fallbackResponse = `（系統提示：目前無法連接後端 /api/chat，錯誤原因：${error.message}。請確認您是否已使用 vercel dev 啟動專案，或已部署至 Vercel。）\n\n您剛才問的是：「${userMessage}」`;
+                }
+                
+                return fallbackResponse;
             }
         };
 
@@ -287,7 +312,7 @@
             setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
             setIsThinking(true);
 
-            // 模擬思考延遲，然後呼叫 askAI
+            // 呼叫 askAI (包含錯誤處理與模擬)
             const aiReply = await askAI(userMsg);
             
             setMessages(prev => [...prev, { role: 'assistant', content: aiReply }]);
