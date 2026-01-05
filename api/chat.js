@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 
   // 2. 呼叫 NVIDIA API
   // 這裡以 Llama-3 為例，請根據你使用的模型更換 URL
-  const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
+  const NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1";
   
   try {
     const response = await fetch(NVIDIA_API_URL, {
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
         "Authorization": `Bearer ${process.env.NVIDIA_API_KEY}` 
       },
       body: JSON.stringify({
-        model: "meta/llama3-70b-instruct", // 請確認你想用的模型名稱
+        model: "minimaxai/minimax-m2", // 請確認你想用的模型名稱
         messages: [{ role: "user", content: message }],
         temperature: 0.5,
         max_tokens: 1024,
